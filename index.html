@@ -1,0 +1,1334 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gestion Glace v1.0.0</title>
+<meta name="description" content="Gestion des congélateurs, du stock et des livraisons de glace et de boissons.">
+<meta name="theme-color" content="#0D1F2D">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF3F6; --surface:#FFFFFF; --ink:#0D1F2D; --ink2:#33495A; --muted:#4A5D6B;
+  --line:#D6E0E6; --line2:#E6EDF1; --field:#9FB3C1;
+  --navy:#0D1F2D; --navy2:#1D3547; --navy-ink:#B9CAD6;
+  --ice:#0B63B5; --ice-d:#084B8A; --ice-t:#E3EFFA; --ice-ink:#123E66;
+  --ok:#0A7A63; --ok-t:#DFF3EC; --ok-ink:#0A6650;
+  --warn:#B45309; --warn-t:#FDF0DC; --warn-ink:#8A3F06; --warn-line:#E8B77A;
+  --bad:#B42318; --bad-t:#FDE7E5; --bad-ink:#9B1C12;
+  --radius:16px;
+  --display:'Bricolage Grotesque', 'Segoe UI', sans-serif;
+  --body:'Manrope', 'Segoe UI', sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, monospace;
+  --nav-h:64px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;-webkit-text-size-adjust:100%}
+body{min-height:100vh}
+a{color:var(--ice);text-decoration:none}
+a:hover{color:var(--ice-d)}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0}
+.display{font-family:var(--display)}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.xs{font-size:12px}
+.bold{font-weight:700}
+.row{display:flex;align-items:center;gap:10px}
+.between{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.wrap{flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.hidden{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- coque ---------- */
+.shell{display:flex;min-height:100vh}
+.nav{position:fixed;left:0;right:0;bottom:0;height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--surface);border-top:1px solid var(--line);display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);z-index:20}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:11px;font-weight:600;position:relative;min-height:44px}
+.nav a.actif{color:var(--ice);font-weight:700}
+.nav .marque{display:none}
+.nav .pastille{position:absolute;top:6px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#E0592A;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.main{flex:1;min-width:0;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px)}
+.top{background:var(--navy);color:#fff;padding:16px 16px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.top .titre{font-family:var(--display);font-size:21px;font-weight:700}
+.top .sous{font-size:12px;color:var(--navy-ink)}
+.top .btn-ic{background:var(--navy2);color:#fff;border:none}
+.vue{padding:16px;max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+@media (min-width:900px){
+  .nav{position:sticky;top:0;bottom:auto;height:100vh;width:236px;flex-shrink:0;grid-auto-flow:row;grid-auto-rows:min-content;grid-auto-columns:auto;align-content:start;gap:4px;padding:20px 14px;border-top:none;border-right:1px solid var(--line);background:var(--navy)}
+  .nav .marque{display:flex;align-items:center;gap:10px;color:#fff;padding:0 8px 18px}
+  .nav a{flex-direction:row;justify-content:flex-start;gap:12px;padding:0 12px;min-height:44px;border-radius:10px;font-size:14px;color:#C9D6DF}
+  .nav a.actif{background:var(--navy2);color:#fff}
+  .nav .pastille{position:static;margin-left:auto}
+  .main{padding-bottom:32px}
+  .vue{padding:24px 28px}
+  .top{padding:18px 28px}
+}
+
+/* ---------- composants ---------- */
+.carte{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+.carte.pad{padding:18px}
+.carte h2{font-size:16px;font-weight:700}
+.section-titre{font-family:var(--display);font-size:20px;font-weight:700}
+.btn{min-height:46px;padding:0 16px;border-radius:12px;border:1px solid var(--field);background:var(--surface);font-weight:700;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-align:center}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn.primaire{background:var(--ice);border-color:var(--ice);color:#fff}
+.btn.primaire:hover{background:var(--ice-d)}
+.btn.succes{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.attention{background:var(--warn);border-color:var(--warn);color:#fff}
+.btn.danger{background:var(--surface);border-color:var(--bad);color:var(--bad)}
+.btn.contour-ok{border-color:var(--ok);color:var(--ok)}
+.btn.petit{min-height:38px;padding:0 12px;font-size:13px;border-radius:10px}
+.btn.plein{width:100%}
+.btn.grand{min-height:54px;font-size:16px;border-radius:14px}
+.btn-ic{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+.btn-ic .pastille{position:absolute;top:5px;right:5px;min-width:17px;height:17px;border-radius:9px;background:#E0592A;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.02em;white-space:nowrap}
+.b-ice{background:var(--ice-t);color:var(--ice)}
+.b-ok{background:var(--ok);color:#fff}
+.b-okt{background:var(--ok-t);color:var(--ok-ink)}
+.b-warn{background:var(--warn-t);color:var(--warn-ink)}
+.b-bad{background:var(--bad-t);color:var(--bad-ink)}
+.b-gris{background:var(--line2);color:var(--muted)}
+.barre{height:8px;border-radius:4px;background:var(--ice-t);overflow:hidden}
+.barre > div{height:100%;background:var(--ice);border-radius:4px;transition:width .6s}
+.barre.ok > div{background:var(--ok)}
+.bandeau{border-radius:var(--radius);padding:14px;display:flex;gap:12px;align-items:center}
+.bandeau.ok{background:var(--ok-t);border:1px solid #9ED7C3}
+.bandeau.warn{background:var(--warn-t);border:1px solid var(--warn-line);color:var(--warn-ink)}
+.bandeau.bad{background:var(--bad-t);border:1px solid #F1B3AC;color:var(--bad-ink)}
+.bandeau.info{background:var(--ice-t);color:var(--ice-ink)}
+.puce-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .l{font-size:13px;color:var(--muted)}
+.kpi .v{font-family:var(--display);font-size:24px;font-weight:700;overflow-wrap:anywhere}
+.kpi .s{font-size:12px;color:var(--muted)}
+.kpi.sombre{background:var(--navy);border-color:var(--navy);color:#fff}
+.kpi.sombre .l,.kpi.sombre .s{color:var(--navy-ink)}
+.resume{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 16px 16px;background:var(--navy)}
+.resume div{background:var(--navy2);color:#fff;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.resume span:first-child{font-size:12px;color:var(--navy-ink)}
+.resume span:last-child{font-size:17px;font-weight:700}
+@media (min-width:900px){.resume{padding:0 28px 18px}}
+
+/* congélateurs */
+.congels{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.congel{display:flex;flex-direction:column;gap:10px;color:var(--ink)}
+.congel.prete{border:2px solid var(--ok)}
+.congel.vide{border-style:dashed;border-color:var(--field)}
+.cycle-l{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line2)}
+.compte{font-family:var(--mono);font-weight:600}
+
+/* formulaires */
+.champ{display:flex;flex-direction:column;gap:6px;min-width:0}
+.champ label,.champ .lbl{font-size:13px;font-weight:700}
+.champ input,.champ select,.champ textarea{min-height:46px;border-radius:12px;border:1px solid var(--field);background:var(--surface);padding:0 12px;font-size:15px;width:100%}
+.champ textarea{padding:10px 12px;min-height:70px;resize:vertical}
+.champ input:focus,.champ select:focus,.champ textarea:focus{outline:2px solid var(--ice);outline-offset:1px}
+.champ .aide{font-size:12px;color:var(--muted)}
+.choix{display:flex;gap:6px;background:#DCE6EC;padding:4px;border-radius:12px;flex-wrap:wrap}
+.choix button{flex:1;min-height:40px;border:none;border-radius:9px;background:transparent;font-weight:600;font-size:14px;color:var(--ink2);cursor:pointer;padding:0 10px;white-space:nowrap}
+.choix button.on{background:var(--surface);color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgba(13,31,45,.12)}
+.choix.bleu button.on{background:var(--ice);color:#fff}
+.stepper{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stepper button{width:56px;height:56px;border-radius:14px;border:1px solid var(--field);background:var(--surface);font-size:26px;font-weight:600;cursor:pointer}
+.stepper button.plus{background:var(--ice);border-color:var(--ice);color:#fff}
+.stepper input{width:120px;text-align:center;font-family:var(--mono);font-size:40px;font-weight:600;border:none;background:transparent;min-height:56px}
+.check{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600}
+.check input{width:22px;height:22px}
+
+/* livraison */
+.lignes{display:flex;flex-direction:column}
+.ligne{display:grid;grid-template-columns:minmax(0,1fr) 76px 76px;grid-template-areas:"art art sup" "fmt cmd liv" "info info info";gap:8px;align-items:end;padding:12px 0;border-top:1px solid var(--line2)}
+.ligne:first-child{border-top:none;padding-top:0}
+.ligne input,.ligne select{min-height:42px;border-radius:10px;border:1px solid var(--field);background:#fff;padding:0 8px;width:100%;font-size:15px}
+.ligne input{text-align:center}
+.l-art{grid-area:art}.l-fmt{grid-area:fmt;min-width:0}.l-cmd{grid-area:cmd}.l-liv{grid-area:liv}.l-sup{grid-area:sup;justify-self:end;align-self:center}
+.l-cmd,.l-liv{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:var(--muted);text-align:center}
+.l-fmt .choix{flex-wrap:nowrap;padding:3px}
+.l-fmt .choix button{min-height:36px;font-size:13px;padding:0 6px}
+.l-fmt .unite{display:flex;align-items:center;min-height:42px;font-size:13px;color:var(--muted)}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+.ligne .suppr{width:34px;height:34px;border-radius:8px;border:none;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ligne-info{grid-area:info;display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);margin-top:-2px;flex-wrap:wrap}
+.pied-liv{position:sticky;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 -6px 16px rgba(13,31,45,.06)}
+@media (min-width:900px){.pied-liv{bottom:12px}}
+
+/* listes et tableaux */
+.liste > *{padding:12px 0;border-top:1px solid var(--line2)}
+.liste > *:first-child{border-top:none;padding-top:0}
+.liste > *:last-child{padding-bottom:0}
+.tablo{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:12px;color:var(--muted);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 10px;border-bottom:1px solid var(--line2);vertical-align:middle}
+tr.annulee td{color:var(--muted);text-decoration:line-through}
+tr.annulee td:last-child{text-decoration:none}
+.notif{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:14px;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.notif.lue{background:#F5F8FA;border-color:#E1E8ED}
+.notif .point{width:8px;height:8px;border-radius:4px;background:var(--ice);margin-top:6px;flex-shrink:0}
+
+/* graphique */
+.histo{height:200px;display:flex;align-items:flex-end;gap:3px;border-bottom:1px solid #C9D6DF;padding-top:8px}
+.histo > div{flex:1;min-width:2px;background:var(--ice);border-radius:3px 3px 0 0;position:relative}
+.histo > div:hover{background:var(--ice-d)}
+.histo-l{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px}
+
+/* fenêtres et messages */
+dialog{border:none;border-radius:20px;padding:0;width:min(460px,calc(100vw - 24px));max-height:calc(100vh - 40px);color:var(--ink);box-shadow:0 20px 50px rgba(13,31,45,.3)}
+dialog::backdrop{background:rgba(13,31,45,.55)}
+dialog form{display:flex;flex-direction:column;gap:14px;padding:20px}
+dialog h2{font-family:var(--display);font-size:20px}
+.erreur{background:var(--bad-t);color:var(--bad-ink);border-radius:10px;padding:10px 12px;font-size:14px;font-weight:600}
+#toasts{position:fixed;left:50%;transform:translateX(-50%);top:12px;z-index:100;display:flex;flex-direction:column;gap:8px;width:min(420px,calc(100vw - 24px));pointer-events:none}
+.toast{background:var(--navy);color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;box-shadow:0 10px 30px rgba(13,31,45,.3);pointer-events:auto;display:flex;gap:10px;align-items:flex-start}
+.toast.succes{background:var(--ok)}
+.toast.erreur-t{background:var(--bad)}
+.toast.attention{background:var(--warn)}
+.centre{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--navy)}
+.boite{background:var(--surface);border-radius:22px;padding:26px 22px;width:min(420px,100%);display:flex;flex-direction:column;gap:16px}
+.logo{width:52px;height:52px;border-radius:14px;background:var(--ice);display:flex;align-items:center;justify-content:center;color:#fff}
+.vide-etat{text-align:center;color:var(--muted);padding:24px 12px}
+.spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--ice);animation:tourne 0.8s linear infinite}
+@keyframes tourne{to{transform:rotate(360deg)}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div id="app"></div>
+<div id="toasts" role="status" aria-live="polite"></div>
+<dialog id="modal"></dialog>
+
+<script>
+/* =====================================================================
+   GESTION GLACE v1.0.0
+   Configuration : remplacez les deux valeurs ci-dessous par celles de
+   votre projet Supabase (Project Settings > API).
+   ===================================================================== */
+'use strict';
+const APP_VERSION = '1.0.0';
+const CONFIG = {
+  SUPABASE_URL: 'https://cwydvmghetesfogokxnz.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_mJwOYKRS4AVP24OhKheK1w_FhpPDORB',
+  DOMAINE_IDENTIFIANTS: 'gestion-glace.app'   // identifiant "awa" => awa@gestion-glace.app
+};
+const TZ = 'Africa/Abidjan';
+
+/* ---------------- état ---------------- */
+let sb = null;
+const S = {
+  session: null, profil: null, reglages: null,
+  articles: [], congelateurs: [], cycles: [], stocks: {}, notifs: [], resume: null, profils: [],
+  vue: 'accueil', param: null,
+  liv: null, clients: [],
+  bilan: { type: 'jour', decalage: 0, du: '', au: '', data: null, livraisons: [], chargement: false },
+  histo: {}, canal: null, demarre: false, rechargeEnCours: null, dernierNotifId: 0
+};
+
+/* ---------------- utilitaires ---------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const app = $('#app');
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf = new Intl.NumberFormat('fr-FR');
+const num = n => nf.format(Math.round(Number(n) || 0));
+const fcfa = n => num(n) + ' F';
+const dtf = opts => new Intl.DateTimeFormat('fr-FR', Object.assign({ timeZone: TZ }, opts));
+const fHeure = d => dtf({ hour: '2-digit', minute: '2-digit' }).format(new Date(d));
+const fDateHeure = d => dtf({ day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(d));
+const fDate = (d, o) => dtf(o || { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(d));
+const majuscule = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const minutesTxt = m => { m = Math.round(m || 0); const h = Math.floor(m / 60), r = m % 60; return h ? (r ? `${h} h ${String(r).padStart(2, '0')}` : `${h} h`) : `${r} min`; };
+const compte = ms => { if (ms <= 0) return '0:00:00'; const s = Math.floor(ms / 1000); return `${Math.floor(s / 3600)}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+const restantTxt = ms => ms <= 0 ? 'imminent' : minutesTxt(Math.ceil(ms / 60000));
+function ilYa(d) {
+  const m = Math.floor((Date.now() - new Date(d)) / 60000);
+  if (m < 1) return "à l'instant";
+  if (m < 60) return `il y a ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `il y a ${h} h`;
+  return fDateHeure(d);
+}
+const depuis = d => { const m = Math.floor((Date.now() - new Date(d)) / 60000); return m < 1 ? 'moins d\'une minute' : minutesTxt(m); };
+const estAdmin = () => S.profil && S.profil.role === 'admin' && S.profil.actif;
+const glace = () => S.articles.find(a => a.est_glace);
+const reste = c => c.quantite - c.retires - c.pertes;
+const cyclesDe = id => S.cycles.filter(c => c.congelateur_id === id).sort((a, b) => new Date(a.fin_prevue) - new Date(b.fin_prevue));
+const occupation = id => cyclesDe(id).reduce((s, c) => s + reste(c), 0);
+const nomProfil = id => (S.profils.find(p => p.id === id) || {}).nom || '—';
+const versEmail = id => { id = String(id || '').trim().toLowerCase(); return id.includes('@') ? id : `${id}@${CONFIG.DOMAINE_IDENTIFIANTS}`; };
+const PAIEMENTS = { especes: 'Espèces', mobile_money: 'Mobile Money', credit: 'À crédit' };
+
+const IC = {
+  maison: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>',
+  flocon: '<path d="M12 2v20M4.9 6l14.2 12M19.1 6 4.9 18"/>',
+  camion: '<path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+  boite: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
+  cloche: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  graph: '<path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/>',
+  reglage: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  eclair: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+  ok: '<path d="M20 6 9 17l-5-5"/>',
+  horloge: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  alerte: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  retour: '<path d="m15 18-6-6 6-6"/>',
+  sortie: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  croix: '<path d="M18 6 6 18M6 6l12 12"/>',
+  gauche: '<path d="m15 18-6-6 6-6"/>',
+  droite: '<path d="m9 18 6-6-6-6"/>',
+  telecharger: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'
+};
+const ic = (n, t = 20, attrs = '') => `<svg width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${attrs}>${IC[n] || ''}</svg>`;
+
+/* ---------------- messages ---------------- */
+function toast(msg, type = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = `<div style="flex:1">${msg}</div>`;
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), type === 'erreur-t' ? 7000 : 4500);
+}
+const msgErreur = e => (e && (e.message || e.error_description || e.msg)) || 'Erreur inconnue';
+async function rpc(nom, args) {
+  const { data, error } = await sb.rpc(nom, args || {});
+  if (error) throw new Error(msgErreur(error));
+  return data;
+}
+async function req(promesse) {
+  const { data, error } = await promesse;
+  if (error) throw new Error(msgErreur(error));
+  return data;
+}
+
+let ctxAudio = null;
+function bip() {
+  try {
+    ctxAudio = ctxAudio || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctxAudio.createOscillator(), g = ctxAudio.createGain();
+    o.type = 'sine'; o.frequency.value = 880;
+    g.gain.setValueAtTime(0.0001, ctxAudio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.25, ctxAudio.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctxAudio.currentTime + 0.5);
+    o.connect(g); g.connect(ctxAudio.destination); o.start(); o.stop(ctxAudio.currentTime + 0.55);
+    if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+  } catch (e) { /* son indisponible */ }
+}
+
+/* ---------------- fenêtre modale ---------------- */
+const modal = $('#modal');
+function ouvrirModal({ titre, corps, bouton = 'Valider', classe = 'primaire', onValider }) {
+  modal.innerHTML = `<form method="dialog" novalidate>
+      <div class="between"><h2>${titre}</h2>
+        <button type="button" class="btn-ic" data-fermer aria-label="Fermer">${ic('croix')}</button></div>
+      ${corps}
+      <div class="erreur hidden" id="modal-erreur"></div>
+      <div class="row" style="justify-content:flex-end">
+        <button type="button" class="btn" data-fermer>Annuler</button>
+        <button type="submit" class="btn ${classe}" id="modal-ok">${bouton}</button>
+      </div></form>`;
+  const form = modal.querySelector('form');
+  modal.querySelectorAll('[data-fermer]').forEach(b => b.onclick = () => modal.close());
+  form.onsubmit = async ev => {
+    ev.preventDefault();
+    const btn = $('#modal-ok'), err = $('#modal-erreur');
+    err.classList.add('hidden'); btn.disabled = true;
+    try {
+      const donnees = Object.fromEntries(new FormData(form).entries());
+      form.querySelectorAll('input[type=checkbox]').forEach(c => { donnees[c.name] = c.checked; });
+      await onValider(donnees, form);
+      modal.close();
+    } catch (e) {
+      err.textContent = msgErreur(e); err.classList.remove('hidden');
+    } finally { btn.disabled = false; }
+  };
+  modal.showModal();
+  const premier = form.querySelector('input:not([type=hidden]),select,textarea');
+  if (premier) setTimeout(() => premier.focus(), 50);
+}
+
+/* ---------------- démarrage ---------------- */
+async function init() {
+  if (!window.supabase || CONFIG.SUPABASE_URL.includes('VOTRE-PROJET')) return ecranConfig();
+  sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true }
+  });
+  sb.auth.onAuthStateChange((evt, session) => {
+    if (evt === 'SIGNED_OUT') { S.session = null; S.profil = null; arreterTempsReel(); ecranConnexion(); }
+    if (evt === 'TOKEN_REFRESHED' && session) S.session = session;
+  });
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return ecranConnexion();
+  S.session = session;
+  demarrer();
+}
+
+async function demarrer() {
+  ecranAttente();
+  try {
+    S.profil = await req(sb.from('profiles').select('*').eq('id', S.session.user.id).single());
+  } catch (e) {
+    return ecranMessage('Profil introuvable', 'Votre compte existe mais son profil est absent. Vérifiez que le script SQL a bien été exécuté. Détail : ' + esc(msgErreur(e)), true);
+  }
+  if (!S.profil.actif) return ecranEnAttente();
+  await rechargerTout();
+  demarrerTempsReel();
+  if (!S.demarre) {
+    S.demarre = true;
+    window.addEventListener('hashchange', route);
+    setInterval(majCompteurs, 1000);
+    setInterval(() => { if (S.profil && S.profil.actif) rafraichir(); }, 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && S.profil) rafraichir(); });
+  }
+  route();
+}
+
+async function rechargerTout() {
+  try {
+    const r = await Promise.all([
+      req(sb.from('reglages').select('*').single()),
+      req(sb.from('articles').select('*').order('ordre').order('nom')),
+      req(sb.from('congelateurs').select('*').order('nom')),
+      req(sb.from('cycles').select('*').neq('statut', 'terminee').order('debut')),
+      req(sb.from('stocks').select('*')),
+      req(sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(60)),
+      rpc('resume_jour'),
+      req(sb.from('profiles').select('*').order('nom'))
+    ]);
+    let stocks;
+    [S.reglages, S.articles, S.congelateurs, S.cycles, stocks, S.notifs, S.resume, S.profils] = r;
+    S.stocks = Object.fromEntries(stocks.map(s => [s.article_id, s]));
+    const moi = S.profils.find(p => p.id === S.profil.id);
+    if (moi) S.profil = moi;
+    if (!S.dernierNotifId) S.dernierNotifId = S.notifs.length ? S.notifs[0].id : 0;
+  } catch (e) {
+    toast('Chargement impossible : ' + esc(msgErreur(e)), 'erreur-t');
+  }
+}
+
+// Rafraîchit les données sans perturber une saisie en cours
+// (force = true après une action de l'utilisateur sur l'écran affiché)
+const VUES_PROTEGEES = ['charger', 'reglages'];
+let forcerRendu = false;
+function rafraichir(force) {
+  if (force === true) forcerRendu = true;
+  clearTimeout(S.rechargeEnCours);
+  S.rechargeEnCours = setTimeout(async () => {
+    await rechargerTout();
+    if (!S.profil || !S.profil.actif) return ecranEnAttente();
+    const el = document.activeElement;
+    const saisie = modal.open || (el && /INPUT|SELECT|TEXTAREA/.test(el.tagName) && el.closest('#vue'));
+    const f = forcerRendu; forcerRendu = false;
+    if (f || (!saisie && !VUES_PROTEGEES.includes(S.vue))) rendre(); else majEntete();
+  }, 350);
+}
+
+function demarrerTempsReel() {
+  arreterTempsReel();
+  const canal = sb.channel('gestion-glace');
+  ['cycles', 'mouvements', 'livraisons', 'congelateurs', 'articles', 'reglages', 'profiles'].forEach(t =>
+    canal.on('postgres_changes', { event: '*', schema: 'public', table: t }, () => rafraichir()));
+  canal.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, p => {
+    nouvelleNotification(p.new); rafraichir();
+  });
+  canal.subscribe();
+  S.canal = canal;
+}
+function arreterTempsReel() { if (S.canal && sb) { sb.removeChannel(S.canal); S.canal = null; } }
+
+function nouvelleNotification(n) {
+  if (!n || (n.pour_admin_seul && !estAdmin()) || n.id <= S.dernierNotifId) return;
+  S.dernierNotifId = n.id;
+  const type = { succes: 'succes', attention: 'attention', danger: 'erreur-t' }[n.niveau] || '';
+  toast(`<strong>${esc(n.titre)}</strong><br>${esc(n.message)}`, type);
+  if (['pret', 'rappel', 'stock_bas', 'vide'].includes(n.type)) bip();
+  if (document.hidden && 'Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker) {
+    navigator.serviceWorker.ready.then(reg => reg.showNotification(n.titre, {
+      body: n.message, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', tag: 'glace-' + n.id,
+      data: { lien: n.lien || 'alertes' }
+    })).catch(() => {});
+  }
+}
+
+/* ---------------- écrans hors application ---------------- */
+function ecranConfig() {
+  app.innerHTML = `<div class="centre"><div class="boite">
+    <div class="logo">${ic('flocon', 28)}</div>
+    <h1 class="display" style="font-size:24px">Configuration requise</h1>
+    <p class="muted" style="margin:0">Ouvrez <strong>index.html</strong> et renseignez <code>SUPABASE_URL</code> et <code>SUPABASE_ANON_KEY</code> (Supabase › Project Settings › API). Le guide d'installation détaille chaque étape.</p>
+    <p class="xs muted" style="margin:0">Gestion Glace v${APP_VERSION}</p></div></div>`;
+}
+function ecranAttente() {
+  app.innerHTML = `<div class="centre"><div class="spin" style="border-color:#1D3547;border-top-color:#fff"></div></div>`;
+}
+function ecranMessage(titre, texte, deconnexion) {
+  app.innerHTML = `<div class="centre"><div class="boite">
+    <div class="logo">${ic('flocon', 28)}</div>
+    <h1 class="display" style="font-size:24px">${titre}</h1>
+    <p class="muted" style="margin:0">${texte}</p>
+    ${deconnexion ? `<button class="btn" data-action="deconnexion">${ic('sortie', 18)} Se déconnecter</button>` : ''}
+  </div></div>`;
+}
+function ecranEnAttente() {
+  arreterTempsReel();
+  ecranMessage('Compte en attente', `Bonjour ${esc(S.profil ? S.profil.nom : '')}. Votre compte doit être activé par l'administrateur avant de pouvoir utiliser l'application.`, true);
+  const b = document.createElement('button');
+  b.className = 'btn primaire'; b.textContent = 'Vérifier à nouveau';
+  b.onclick = demarrer;
+  app.querySelector('.boite').appendChild(b);
+}
+
+function ecranConnexion(modeCreation = false) {
+  app.innerHTML = `<div class="centre"><form class="boite" id="f-connexion" novalidate>
+    <div class="row"><div class="logo">${ic('flocon', 28)}</div>
+      <div><div class="display bold" style="font-size:22px">Gestion Glace</div><div class="xs muted">Version ${APP_VERSION}</div></div></div>
+    <h1 class="display" style="font-size:20px">${modeCreation ? 'Créer le compte administrateur' : 'Connexion'}</h1>
+    ${modeCreation ? `<p class="small muted" style="margin:0">Uniquement lors de la première installation : le tout premier compte devient administrateur. Les comptes suivants sont créés par l'administrateur depuis Réglages.</p>
+      <div class="champ"><label for="c-nom">Votre nom</label><input id="c-nom" name="nom" autocomplete="name" required></div>` : ''}
+    <div class="champ"><label for="c-id">Identifiant</label><input id="c-id" name="identifiant" autocomplete="username" autocapitalize="none" required>
+      <span class="aide">Par exemple : awa (ou une adresse e-mail)</span></div>
+    <div class="champ"><label for="c-mdp">Mot de passe</label><input id="c-mdp" name="mdp" type="password" autocomplete="${modeCreation ? 'new-password' : 'current-password'}" required minlength="6"></div>
+    <div class="erreur hidden" id="c-err"></div>
+    <button class="btn primaire grand" type="submit">${modeCreation ? 'Créer le compte' : 'Se connecter'}</button>
+    <button class="btn" type="button" id="c-bascule" style="border:none;background:none;color:var(--ice)">${modeCreation ? 'J\'ai déjà un compte' : 'Première installation : créer le compte administrateur'}</button>
+  </form></div>`;
+  $('#c-bascule').onclick = () => ecranConnexion(!modeCreation);
+  $('#f-connexion').onsubmit = async ev => {
+    ev.preventDefault();
+    const f = Object.fromEntries(new FormData(ev.target).entries());
+    const err = $('#c-err'); err.classList.add('hidden');
+    const btn = ev.target.querySelector('button[type=submit]'); btn.disabled = true;
+    try {
+      if (!f.identifiant || !f.mdp) throw new Error('Renseignez l\'identifiant et le mot de passe.');
+      if (modeCreation) {
+        if (f.mdp.length < 6) throw new Error('Le mot de passe doit contenir au moins 6 caractères.');
+        const { data, error } = await sb.auth.signUp({ email: versEmail(f.identifiant), password: f.mdp, options: { data: { nom: (f.nom || '').trim() } } });
+        if (error) throw error;
+        if (!data.session) throw new Error('Compte créé, mais la confirmation par e-mail est activée dans Supabase. Désactivez-la (voir le guide) puis connectez-vous.');
+        S.session = data.session;
+      } else {
+        const { data, error } = await sb.auth.signInWithPassword({ email: versEmail(f.identifiant), password: f.mdp });
+        if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Identifiant ou mot de passe incorrect.' : error.message);
+        S.session = data.session;
+      }
+      demarrer();
+    } catch (e) {
+      err.textContent = msgErreur(e); err.classList.remove('hidden'); btn.disabled = false;
+    }
+  };
+}
+
+/* ---------------- navigation ---------------- */
+function navItems() {
+  const items = [
+    ['accueil', 'Accueil', 'maison'], ['charger', 'Charger', 'flocon'], ['livrer', 'Livrer', 'camion'],
+    ['stock', 'Stock', 'boite'], ['alertes', 'Alertes', 'cloche']
+  ];
+  if (estAdmin()) items.push(['bilan', 'Bilan', 'graph'], ['reglages', 'Réglages', 'reglage']);
+  return items;
+}
+const nonLues = () => S.notifs.filter(n => !(n.lu_par || []).includes(S.profil.id)).length;
+
+function route() {
+  const [vue, param] = (location.hash.replace(/^#\/?/, '') || 'accueil').split('/');
+  const permises = navItems().map(i => i[0]).concat(['congelateur']);
+  S.vue = permises.includes(vue) ? vue : 'accueil';
+  S.param = param || null;
+  if (S.vue === 'livrer' && !S.liv) nouvelleLivraison();
+  if (S.vue === 'livrer') chargerClients();
+  if (S.vue === 'bilan' && !S.bilan.chargement) chargerBilan();
+  if (S.vue === 'congelateur') chargerHistorique(Number(S.param));
+  rendre();
+  window.scrollTo(0, 0);
+  if (S.vue === 'alertes') setTimeout(() => { if (S.vue === 'alertes' && nonLues()) rpc('marquer_lu', { p_ids: null }).then(rafraichir).catch(() => {}); }, 1500);
+}
+const aller = h => { if (location.hash === '#/' + h) route(); else location.hash = '#/' + h; };
+
+function rendre() {
+  if (!S.profil) return;
+  const n = nonLues();
+  const vues = { accueil: vAccueil, congelateur: vCongelateur, charger: vCharger, livrer: vLivrer, stock: vStock, alertes: vAlertes, bilan: vBilan, reglages: vReglages };
+  const actif = S.vue === 'congelateur' ? 'accueil' : S.vue;
+  const titres = { accueil: 'Accueil', congelateur: 'Congélateur', charger: 'Charger un congélateur', livrer: 'Nouvelle livraison', stock: 'Stock', alertes: 'Alertes', bilan: 'Tableau de bord', reglages: 'Réglages' };
+  app.innerHTML = `<div class="shell">
+    <nav class="nav" aria-label="Navigation principale">
+      <div class="marque"><div class="logo" style="width:36px;height:36px;border-radius:10px">${ic('flocon', 20)}</div>
+        <div><div class="display bold" style="font-size:17px">Gestion Glace</div><div class="xs" style="color:var(--navy-ink)">v${APP_VERSION} · ${estAdmin() ? 'Administrateur' : 'Opérateur'}</div></div></div>
+      ${navItems().map(([id, lib, icone]) => `<a href="#/${id}" class="${actif === id ? 'actif' : ''}" ${actif === id ? 'aria-current="page"' : ''}>
+        ${ic(icone, 22)}<span>${lib}</span>${id === 'alertes' && n ? `<span class="pastille" id="pastille-nav">${n}</span>` : ''}</a>`).join('')}
+    </nav>
+    <div class="main">
+      <header class="top">
+        <div style="min-width:0"><div class="sous">${esc(majuscule(fDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long' })))} · ${esc(S.profil.nom)}</div>
+          <div class="titre">${titres[S.vue]}</div></div>
+        <div class="row">
+          <a href="#/alertes" class="btn-ic" aria-label="Alertes (${n} non lues)">${ic('cloche', 20)}${n ? `<span class="pastille" id="pastille-top">${n}</span>` : ''}</a>
+          <button class="btn-ic" data-action="deconnexion" aria-label="Se déconnecter">${ic('sortie', 20)}</button>
+        </div>
+      </header>
+      ${S.vue === 'accueil' ? resumeJour() : ''}
+      <main class="vue" id="vue">${vues[S.vue]()}</main>
+    </div></div>`;
+  majCompteurs();
+}
+function majEntete() {
+  const n = nonLues();
+  ['pastille-nav', 'pastille-top'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = n; });
+}
+
+/* ---------------- compteurs en direct ---------------- */
+function majCompteurs() {
+  const now = Date.now();
+  document.querySelectorAll('[data-fin]').forEach(el => {
+    const fin = new Date(el.dataset.fin).getTime();
+    el.textContent = el.dataset.format === 'long' ? compte(fin - now) : restantTxt(fin - now);
+  });
+  document.querySelectorAll('[data-prog-debut]').forEach(el => {
+    const d = new Date(el.dataset.progDebut).getTime(), f = new Date(el.dataset.progFin).getTime();
+    el.style.width = Math.max(2, Math.min(100, (now - d) / Math.max(1, f - d) * 100)) + '%';
+  });
+  document.querySelectorAll('[data-depuis]').forEach(el => { el.textContent = depuis(el.dataset.depuis); });
+}
+
+/* ---------------- ACCUEIL ---------------- */
+function resumeJour() {
+  const r = S.resume || {};
+  return `<div class="resume">
+    <div><span>Glace livrée aujourd'hui</span><span>${num(r.sachets)} sachets${r.lots ? ` · dont ${num(r.lots)} lot${r.lots > 1 ? 's' : ''}` : ''}</span></div>
+    <div><span>Recette du jour</span><span>${fcfa(r.recette)}</span></div></div>`;
+}
+
+function vAccueil() {
+  const g = glace();
+  const pretes = S.cycles.filter(c => c.statut === 'prete');
+  const actifs = S.congelateurs.filter(k => k.actif);
+  let h = '';
+  if (estAdmin() && g && (!g.prix || !g.prix_lot)) {
+    h += `<div class="bandeau warn"><div style="flex:1"><strong>Prix de la glace à renseigner.</strong><br><span class="small">Indiquez le prix du sachet et du lot avant les premières livraisons.</span></div>
+      <a class="btn petit" href="#/reglages">Réglages</a></div>`;
+  }
+  pretes.forEach(c => {
+    const k = S.congelateurs.find(x => x.id === c.congelateur_id) || {};
+    h += `<div class="bandeau ok">
+      <div class="puce-ic" style="background:var(--ok);color:#fff">${ic('ok', 20)}</div>
+      <div style="flex:1;min-width:0"><div class="bold">${esc(k.nom)} : ${reste(c)} sachets prêts</div>
+        <div class="small" style="color:#2D5248">Prêts depuis <span data-depuis="${c.prete_at}">${depuis(c.prete_at)}</span> — à retirer et recharger</div></div>
+      <button class="btn succes petit" data-action="retirer" data-id="${c.id}">Retirer</button></div>`;
+  });
+  h += `<div class="carte between" style="padding:10px 12px 10px 14px">
+      <div class="row small bold" style="color:var(--warn-ink)">${ic('eclair', 18)} Coupure d'électricité ?</div>
+      <button class="btn petit" style="border-color:var(--warn-line);background:var(--warn-t);color:var(--warn-ink)" data-action="coupure">${ic('eclair', 16)} Signaler une coupure</button></div>`;
+  h += `<div class="between"><h2 class="section-titre">Congélateurs</h2><span class="small muted">${actifs.length} actif${actifs.length > 1 ? 's' : ''}</span></div>`;
+  if (!actifs.length) {
+    h += `<div class="carte vide-etat">Aucun congélateur pour l'instant.${estAdmin() ? `<br><a href="#/reglages" class="bold">Ajouter un congélateur dans Réglages</a>` : ' L\'administrateur doit en ajouter un.'}</div>`;
+  } else {
+    h += `<div class="congels">${actifs.map(carteCongelateur).join('')}</div>`;
+  }
+  return h;
+}
+
+function carteCongelateur(k) {
+  const cs = cyclesDe(k.id);
+  const occ = occupation(k.id);
+  const libre = k.capacite - occ;
+  const pretes = cs.filter(c => c.statut === 'prete');
+  const vide = !cs.length;
+  let statut = vide ? '<span class="badge b-bad">VIDE</span>' : pretes.length ? '<span class="badge b-ok">PRÊTE</span>' : '<span class="badge b-ice">EN CONGÉLATION</span>';
+  let corps = '';
+  if (vide) {
+    corps = `<div class="small" style="color:var(--bad);font-weight:600">${k.vide_depuis ? `Vide depuis <span data-depuis="${k.vide_depuis}">${depuis(k.vide_depuis)}</span>` : 'Vide'} · 0 / ${k.capacite}</div>`;
+  } else {
+    corps = `<div class="between small"><span class="muted">${occ} / ${k.capacite} sachets</span>${libre > 0 ? `<span class="muted">${libre} place${libre > 1 ? 's' : ''} libre${libre > 1 ? 's' : ''}</span>` : '<span class="bold">Plein</span>'}</div>`;
+    corps += cs.map(c => c.statut === 'prete'
+      ? `<div class="cycle-l"><div class="between"><span class="small">${reste(c)} sachets</span><span class="small bold" style="color:var(--ok)">Prêts depuis <span data-depuis="${c.prete_at}">${depuis(c.prete_at)}</span></span></div><div class="barre ok"><div style="width:100%"></div></div></div>`
+      : `<div class="cycle-l"><div class="between"><span class="small">${reste(c)} sachets · prêt à ${fHeure(c.fin_prevue)}</span><span class="compte" style="font-size:18px" data-fin="${c.fin_prevue}">${restantTxt(new Date(c.fin_prevue) - Date.now())}</span></div>
+          <div class="barre"><div data-prog-debut="${c.debut}" data-prog-fin="${c.fin_prevue}"></div></div>
+          ${c.minutes_ajoutees > 0 ? `<span class="xs" style="color:var(--warn-ink);font-weight:600">+${minutesTxt(c.minutes_ajoutees)} ajoutées (coupure / prolongation)</span>` : ''}</div>`).join('');
+  }
+  return `<div class="carte congel ${pretes.length ? 'prete' : ''} ${vide ? 'vide' : ''}">
+    <div class="between"><a href="#/congelateur/${k.id}" class="bold" style="font-size:16px;color:var(--ink)">${esc(k.nom)}</a>${statut}</div>
+    ${corps}
+    <div class="row wrap">
+      <a class="btn petit" href="#/congelateur/${k.id}">Détails</a>
+      ${pretes.length ? `<button class="btn petit succes" data-action="retirer" data-id="${pretes[0].id}">Retirer</button>` : ''}
+      ${libre > 0 ? `<a class="btn petit ${vide ? 'primaire' : ''}" href="#/charger/${k.id}">Charger</a>` : ''}
+    </div></div>`;
+}
+
+/* ---------------- DÉTAIL CONGÉLATEUR ---------------- */
+async function chargerHistorique(id) {
+  if (!id) return;
+  try {
+    S.histo[id] = await req(sb.from('cycles').select('*').eq('congelateur_id', id).eq('statut', 'terminee').order('debut', { ascending: false }).limit(10));
+    if (S.vue === 'congelateur' && Number(S.param) === id) rendre();
+  } catch (e) { /* historique facultatif */ }
+}
+
+function vCongelateur() {
+  const id = Number(S.param);
+  const k = S.congelateurs.find(x => x.id === id);
+  if (!k) return `<div class="carte vide-etat">Congélateur introuvable. <a href="#/accueil">Retour</a></div>`;
+  const cs = cyclesDe(id), occ = occupation(id), libre = k.capacite - occ;
+  let h = `<div class="row"><a href="#/accueil" class="btn-ic" aria-label="Retour">${ic('retour', 22)}</a>
+    <div><div class="display bold" style="font-size:22px">${esc(k.nom)}</div>
+    <div class="small muted">Capacité ${k.capacite} · cycle de base ${minutesTxt(k.duree_minutes)} · +${minutesTxt(k.minutes_coupure)} par coupure</div></div></div>`;
+  h += `<div class="carte"><div class="between"><span class="bold">Remplissage</span><span class="small muted">${occ} / ${k.capacite} sachets</span></div>
+    <div class="barre" style="margin-top:8px;height:10px"><div style="width:${Math.round(occ / k.capacite * 100)}%"></div></div>
+    ${libre > 0 ? `<a class="btn primaire plein" style="margin-top:12px" href="#/charger/${k.id}">Charger ${libre} place${libre > 1 ? 's' : ''} libre${libre > 1 ? 's' : ''}</a>` : ''}</div>`;
+  if (!cs.length) h += `<div class="carte vide-etat">Aucun cycle en cours.</div>`;
+  cs.forEach(c => {
+    const prete = c.statut === 'prete';
+    h += `<div class="carte stack" style="${prete ? 'border:2px solid var(--ok)' : ''}">
+      <div class="between"><span class="bold">${reste(c)} sachets · chargés à ${fHeure(c.debut)}</span>${prete ? '<span class="badge b-ok">PRÊTE</span>' : '<span class="badge b-ice">EN CONGÉLATION</span>'}</div>
+      ${prete ? `<div class="small" style="color:var(--ok);font-weight:700">Prêts depuis <span data-depuis="${c.prete_at}">${depuis(c.prete_at)}</span></div>`
+              : `<div style="text-align:center;padding:6px 0"><div class="small muted">Temps restant</div>
+                 <div class="compte" style="font-size:38px" data-fin="${c.fin_prevue}" data-format="long">${compte(new Date(c.fin_prevue) - Date.now())}</div>
+                 <div class="small muted">Prête à ${fHeure(c.fin_prevue)}${c.minutes_ajoutees > 0 ? ` (fin initiale ${fHeure(new Date(c.debut).getTime() + c.duree_minutes * 60000)})` : ''}</div></div>
+                 <div class="barre" style="height:10px"><div data-prog-debut="${c.debut}" data-prog-fin="${c.fin_prevue}"></div></div>`}
+      ${c.minutes_ajoutees > 0 ? `<div class="bandeau warn small" style="padding:8px 12px">${ic('eclair', 16)} +${minutesTxt(c.minutes_ajoutees)} ajoutées (coupures / prolongations)</div>` : ''}
+      <div class="grid2">
+        <button class="btn" data-action="prolonger" data-id="${c.id}">Prolonger</button>
+        <button class="btn ${prete ? 'succes' : 'contour-ok'}" data-action="retirer" data-id="${c.id}" ${prete ? '' : 'disabled title="Disponible quand les glaces sont prêtes"'}>Retirer</button>
+      </div></div>`;
+  });
+  const histo = S.histo[id] || [];
+  if (histo.length) {
+    h += `<div class="carte"><h2 style="margin-bottom:8px">Derniers cycles</h2><div class="liste">${histo.map(c => `
+      <div class="between small"><span>${fDateHeure(c.debut)} → ${fHeure(c.prete_at || c.fin_prevue)}</span>
+      <span class="muted">${c.retires} retirés${c.pertes ? ` · ${c.pertes} perdu${c.pertes > 1 ? 's' : ''}` : ''}</span></div>`).join('')}</div></div>`;
+  }
+  return h;
+}
+
+/* ---------------- CHARGER ---------------- */
+function vCharger() {
+  const actifs = S.congelateurs.filter(k => k.actif);
+  if (!actifs.length) return `<div class="carte vide-etat">Aucun congélateur actif.${estAdmin() ? ' <a href="#/reglages">Ajouter un congélateur</a>' : ''}</div>`;
+  let id = Number(S.param);
+  if (!actifs.some(k => k.id === id)) {
+    const dispo = actifs.slice().sort((a, b) => (b.capacite - occupation(b.id)) - (a.capacite - occupation(a.id)));
+    id = dispo[0].id;
+  }
+  const k = actifs.find(x => x.id === id);
+  const libre = k.capacite - occupation(k.id);
+  return `<form class="stack" id="f-charger" novalidate>
+    <div class="champ"><label for="ch-congel">Congélateur</label>
+      <select id="ch-congel" name="congelateur">${actifs.map(x => { const l = x.capacite - occupation(x.id); return `<option value="${x.id}" ${x.id === id ? 'selected' : ''}>${esc(x.nom)} — ${l ? `${l} place${l > 1 ? 's' : ''} libre${l > 1 ? 's' : ''}` : 'plein'} (capacité ${x.capacite})</option>`; }).join('')}</select></div>
+    <div class="carte stack">
+      <span class="bold">Nombre de sachets chargés</span>
+      ${libre > 0 ? `<div class="stepper">
+        <button type="button" data-action="qte" data-pas="-1" aria-label="Diminuer">−</button>
+        <input id="ch-qte" name="quantite" type="number" inputmode="numeric" min="1" max="${libre}" value="${libre}" aria-label="Nombre de sachets">
+        <button type="button" class="plus" data-action="qte" data-pas="1" aria-label="Augmenter">+</button></div>
+      <div class="between small muted"><span>${libre} place${libre > 1 ? 's' : ''} libre${libre > 1 ? 's' : ''} sur ${k.capacite}</span>
+        <button type="button" class="btn petit" data-action="qte" data-pas="max">Remplir au maximum</button></div>`
+      : `<div class="bandeau bad small">Ce congélateur est plein. Retirez d'abord les glaces prêtes.</div>`}
+    </div>
+    <div class="carte stack">
+      <div class="champ"><label for="ch-duree">Durée de congélation (minutes)</label>
+        <input id="ch-duree" name="duree" type="number" inputmode="numeric" min="10" value="${k.duree_minutes}">
+        <span class="aide">Durée habituelle de ce congélateur : ${minutesTxt(k.duree_minutes)}. Prête vers <strong id="ch-pret">${fHeure(Date.now() + k.duree_minutes * 60000)}</strong>.</span></div>
+      <span class="xs muted">Chaque coupure signalée ajoutera ${minutesTxt(k.minutes_coupure)} automatiquement.</span>
+    </div>
+    <div class="bandeau info small">${ic('cloche', 18)} Une alerte sera envoyée (application${S.reglages && S.reglages.telegram_actif ? ' et Telegram' : ''}) quand les glaces seront prêtes.</div>
+    <button class="btn primaire grand" type="submit" ${libre > 0 ? '' : 'disabled'}>Démarrer la congélation</button>
+  </form>`;
+}
+
+/* ---------------- LIVRER ---------------- */
+let cleLigne = 0;
+function nouvelleLivraison() {
+  const g = glace();
+  S.liv = { client: '', tel: '', paiement: 'especes', note: '', lignes: g ? [{ k: ++cleLigne, article_id: g.id, format: 'unite', commandee: '', livree: '' }] : [] };
+}
+async function chargerClients() {
+  try {
+    const rows = await req(sb.from('livraisons').select('client_nom, client_tel').order('created_at', { ascending: false }).limit(400));
+    const vus = new Map();
+    rows.forEach(r => { const k = r.client_nom.trim().toLowerCase(); if (!vus.has(k)) vus.set(k, r); });
+    S.clients = [...vus.values()];
+    const dl = document.getElementById('dl-clients');
+    if (dl) dl.innerHTML = S.clients.map(c => `<option value="${esc(c.client_nom)}">`).join('');
+  } catch (e) { /* facultatif */ }
+}
+const lotPossible = a => a && a.taille_lot && a.prix_lot !== null && a.prix_lot !== undefined;
+function prixLigne(l) {
+  const a = S.articles.find(x => x.id === Number(l.article_id));
+  if (!a) return { prix: 0, taille: 1, a };
+  return l.format === 'lot' && lotPossible(a) ? { prix: a.prix_lot, taille: a.taille_lot, a } : { prix: a.prix, taille: 1, a };
+}
+function totauxLivraison() {
+  let total = 0, supp = 0, nb = 0;
+  S.liv.lignes.forEach(l => {
+    const { prix } = prixLigne(l);
+    const liv = parseInt(l.livree, 10) || 0;
+    const cmd = l.commandee === '' ? liv : (parseInt(l.commandee, 10) || 0);
+    total += liv * prix; supp += Math.max(liv - cmd, 0) * prix; nb += Math.max(liv - cmd, 0);
+  });
+  return { total, supp, nb };
+}
+function vLivrer() {
+  const L = S.liv;
+  const actifs = S.articles.filter(a => a.actif);
+  const t = totauxLivraison();
+  return `<form class="stack" id="f-livrer" novalidate>
+    <div class="grid2" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr)">
+      <div class="champ"><label for="lv-client">Client</label><input id="lv-client" data-liv="client" list="dl-clients" value="${esc(L.client)}" autocomplete="off" placeholder="Nom du client"></div>
+      <div class="champ"><label for="lv-tel">Téléphone</label><input id="lv-tel" data-liv="tel" type="tel" inputmode="tel" value="${esc(L.tel)}" placeholder="Facultatif"></div>
+    </div>
+    <datalist id="dl-clients">${S.clients.map(c => `<option value="${esc(c.client_nom)}">`).join('')}</datalist>
+    <div class="carte">
+      <div class="lignes">${L.lignes.map((l, i) => {
+        const { prix, taille, a } = prixLigne(l);
+        const st = a ? (S.stocks[a.id] || {}).stock || 0 : 0;
+        const liv = parseInt(l.livree, 10) || 0;
+        return `<div class="ligne">
+          <select class="l-art" aria-label="Article" data-action-change="liv-article" data-i="${i}">${actifs.map(x => `<option value="${x.id}" ${x.id === Number(l.article_id) ? 'selected' : ''}>${esc(x.nom)}</option>`).join('')}</select>
+          <button type="button" class="suppr l-sup" data-action="liv-suppr" data-i="${i}" aria-label="Retirer la ligne">${ic('croix', 18)}</button>
+          <div class="l-fmt">${lotPossible(a) ? `<div class="choix" role="group" aria-label="Format de vente"><button type="button" class="${l.format !== 'lot' ? 'on' : ''}" data-action="liv-format" data-i="${i}" data-f="unite">${esc(majuscule(a.unite || 'unité'))}</button>
+              <button type="button" class="${l.format === 'lot' ? 'on' : ''}" data-action="liv-format" data-i="${i}" data-f="lot">Lot (${a.taille_lot})</button></div>` : `<span class="unite">Par ${esc(a ? a.unite : 'unité')}</span>`}</div>
+          <label class="l-cmd">Commandé<input type="number" inputmode="numeric" min="0" data-ligne="commandee" data-i="${i}" value="${esc(l.commandee)}" placeholder="—"></label>
+          <label class="l-liv">Livré<input type="number" inputmode="numeric" min="1" data-ligne="livree" data-i="${i}" value="${esc(l.livree)}"></label>
+          <div class="ligne-info"><span>${fcfa(prix)} / ${l.format === 'lot' && lotPossible(a) ? 'lot' : esc(a ? a.unite : 'unité')} · dispo : ${num(st)}${a && a.est_glace ? ' sachets prêts' : ''}${taille > 1 ? ` (${Math.floor(st / taille)} lot${Math.floor(st / taille) > 1 ? 's' : ''})` : ''}</span>
+            <span class="bold" data-montant="${i}">${fcfa(liv * prix)}</span></div>
+        </div>`;
+      }).join('') || '<div class="vide-etat small">Aucun article.</div>'}</div>
+      <button type="button" class="btn plein" style="margin-top:10px;border-style:dashed;color:var(--ice);border-color:var(--ice)" data-action="liv-ajout">${ic('plus', 18)} Ajouter un article</button>
+      <p class="xs muted" style="margin:10px 0 0">« Commandé » vide = identique à la quantité livrée. Si vous livrez plus que la commande, l'écart est compté comme supplément.</p>
+    </div>
+    <div class="bandeau warn small ${t.supp ? '' : 'hidden'}" id="lv-supp"><div>Supplément livré au-delà de la commande : <strong id="lv-supp-v">${num(t.nb)} unité(s) · ${fcfa(t.supp)}</strong></div></div>
+    <div class="champ"><span class="lbl">Paiement</span>
+      <div class="choix bleu" role="group" aria-label="Mode de paiement">${Object.entries(PAIEMENTS).map(([k, v]) => `<button type="button" class="${L.paiement === k ? 'on' : ''}" aria-pressed="${L.paiement === k}" data-action="liv-paiement" data-p="${k}">${v}</button>`).join('')}</div></div>
+    <div class="champ"><label for="lv-note">Note</label><input id="lv-note" data-liv="note" value="${esc(L.note)}" placeholder="Facultatif (adresse, échéance du crédit…)"></div>
+    <div class="pied-liv">
+      <div class="between"><span class="muted small">Total à encaisser</span><span class="display bold" style="font-size:26px" id="lv-total">${fcfa(t.total)}</span></div>
+      <button class="btn succes grand plein" type="submit">Valider la livraison</button>
+    </div>
+  </form>`;
+}
+function majTotauxLivraison() {
+  const t = totauxLivraison();
+  const tot = $('#lv-total'); if (tot) tot.textContent = fcfa(t.total);
+  const s = $('#lv-supp'); if (s) { s.classList.toggle('hidden', !t.supp); $('#lv-supp-v').textContent = `${num(t.nb)} unité(s) · ${fcfa(t.supp)}`; }
+  S.liv.lignes.forEach((l, i) => { const el = document.querySelector(`[data-montant="${i}"]`); if (el) el.textContent = fcfa((parseInt(l.livree, 10) || 0) * prixLigne(l).prix); });
+}
+
+/* ---------------- STOCK ---------------- */
+function vStock() {
+  const g = glace();
+  let h = '';
+  if (g) {
+    const s = S.stocks[g.id] || {};
+    h += `<div class="carte stack"><div class="between"><h2>Glace</h2>${badgeStock(g, (s.stock || 0) + (s.en_congelateur || 0))}</div>
+      <div class="grid2">
+        <div class="kpi" style="padding:12px"><span class="l">Prêts à livrer</span><span class="v">${num(s.stock)}</span><span class="s">sachets retirés</span></div>
+        <div class="kpi" style="padding:12px"><span class="l">Dans les congélateurs</span><span class="v">${num(s.en_congelateur)}</span><span class="s">en congélation ou prêts</span></div>
+      </div>
+      <div class="row wrap"><button class="btn petit" data-action="stock-perte" data-id="${g.id}">Déclarer une perte</button>
+        ${estAdmin() ? `<button class="btn petit" data-action="stock-ajuster" data-id="${g.id}">Ajuster (inventaire)</button>` : ''}</div>
+      <span class="xs muted">Seuil d'alerte : ${g.seuil_alerte} sachets (prêts + en congélateur).</span></div>`;
+  }
+  const autres = S.articles.filter(a => !a.est_glace && a.actif);
+  h += `<div class="between"><h2 class="section-titre">Boissons et autres articles</h2>${estAdmin() ? '<a class="btn petit" href="#/reglages">Gérer les articles</a>' : ''}</div>`;
+  if (!autres.length) return h + `<div class="carte vide-etat">Aucun autre article.${estAdmin() ? ' Ajoutez eau, jus, bissap… dans Réglages.' : ''}</div>`;
+  h += `<div class="carte"><div class="liste">${autres.map(a => {
+    const st = (S.stocks[a.id] || {}).stock || 0;
+    return `<div class="stack" style="gap:8px"><div class="between"><div><div class="bold">${esc(a.nom)}</div><div class="xs muted">${fcfa(a.prix)} / ${esc(a.unite)} · seuil ${a.seuil_alerte}</div></div>
+      <div class="row"><span class="display bold" style="font-size:22px">${num(st)}</span>${badgeStock(a, st)}</div></div>
+      <div class="row wrap"><button class="btn petit primaire" data-action="stock-appro" data-id="${a.id}">${ic('plus', 16)} Approvisionner</button>
+        <button class="btn petit" data-action="stock-perte" data-id="${a.id}">Perte</button>
+        ${estAdmin() ? `<button class="btn petit" data-action="stock-ajuster" data-id="${a.id}">Inventaire</button>` : ''}</div></div>`;
+  }).join('')}</div></div>`;
+  return h;
+}
+function badgeStock(a, niveau) {
+  if (!a.seuil_alerte) return '';
+  return niveau < a.seuil_alerte ? '<span class="badge b-bad">BAS</span>' : '<span class="badge b-okt">OK</span>';
+}
+
+/* ---------------- ALERTES ---------------- */
+function vAlertes() {
+  const icones = { succes: ['ok', 'var(--ok-t)', 'var(--ok)'], attention: ['horloge', 'var(--warn-t)', 'var(--warn)'], danger: ['alerte', 'var(--bad-t)', 'var(--bad)'], info: ['info', 'var(--ice-t)', 'var(--ice)'] };
+  let h = `<div class="between wrap"><span class="small muted">${S.notifs.length} dernière${S.notifs.length > 1 ? 's' : ''} alerte${S.notifs.length > 1 ? 's' : ''}</span>
+    <div class="row">${'Notification' in window && Notification.permission !== 'granted' ? `<button class="btn petit" data-action="notif-autoriser">${ic('cloche', 16)} Activer sur cet appareil</button>` : ''}
+    <button class="btn petit" data-action="notif-lu">Tout marquer lu</button></div></div>`;
+  if (!S.notifs.length) return h + `<div class="carte vide-etat">Aucune alerte pour le moment.</div>`;
+  h += `<div class="stack" style="gap:8px">${S.notifs.map(n => {
+    const [i, fond, coul] = icones[n.niveau] || icones.info;
+    const lue = (n.lu_par || []).includes(S.profil.id);
+    const contenu = `<span class="puce-ic" style="width:36px;height:36px;border-radius:10px;background:${fond};color:${coul}">${ic(n.type === 'coupure' ? 'eclair' : i, 18)}</span>
+      <div style="flex:1;min-width:0"><div class="between" style="align-items:flex-start"><span class="bold small">${esc(n.titre)}</span><span class="xs muted" style="white-space:nowrap">${fHeure(n.created_at)}</span></div>
+      <div class="small" style="color:var(--ink2);white-space:pre-line">${esc(n.message)}</div><div class="xs muted">${ilYa(n.created_at)}</div></div>
+      ${lue ? '' : '<span class="point" aria-label="Non lue"></span>'}`;
+    return n.lien ? `<a class="notif ${lue ? 'lue' : ''}" href="#/${esc(n.lien)}">${contenu}</a>` : `<div class="notif ${lue ? 'lue' : ''}">${contenu}</div>`;
+  }).join('')}</div>`;
+  h += `<p class="xs muted" style="margin:4px 0 0">Les alertes arrivent aussi sur le groupe Telegram quand il est configuré (Réglages). Les notifications de l'appareil fonctionnent tant que l'application est ouverte, même en arrière-plan.</p>`;
+  return h;
+}
+
+/* ---------------- BILAN (admin) ---------------- */
+function bornesPeriode() {
+  const B = S.bilan, n = new Date();
+  const y = n.getUTCFullYear(), m = n.getUTCMonth(), d = n.getUTCDate(), o = B.decalage;
+  const U = (a, b, c) => new Date(Date.UTC(a, b, c));
+  const f = (dt, opt) => new Intl.DateTimeFormat('fr-FR', Object.assign({ timeZone: 'UTC' }, opt)).format(dt);
+  let debut, fin, libelle;
+  if (B.type === 'jour') {
+    debut = U(y, m, d + o); fin = U(y, m, d + o + 1);
+    libelle = majuscule(f(debut, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+  } else if (B.type === 'semaine') {
+    const lundi = d - ((n.getUTCDay() + 6) % 7);
+    debut = U(y, m, lundi + 7 * o); fin = U(y, m, lundi + 7 * o + 7);
+    libelle = `Semaine du ${f(debut, { day: 'numeric', month: 'short' })} au ${f(new Date(fin - 864e5), { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  } else if (B.type === 'mois') {
+    debut = U(y, m + o, 1); fin = U(y, m + o + 1, 1);
+    libelle = majuscule(f(debut, { month: 'long', year: 'numeric' }));
+  } else if (B.type === 'annee') {
+    debut = U(y + o, 0, 1); fin = U(y + o + 1, 0, 1);
+    libelle = 'Année ' + (y + o);
+  } else {
+    const du = B.du || new Date().toISOString().slice(0, 10), au = B.au || du;
+    debut = new Date(du + 'T00:00:00Z'); fin = new Date(new Date(au + 'T00:00:00Z').getTime() + 864e5);
+    libelle = `Du ${f(debut, { day: 'numeric', month: 'short', year: 'numeric' })} au ${f(new Date(fin - 864e5), { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  }
+  return { debut, fin, libelle };
+}
+async function chargerBilan() {
+  const { debut, fin } = bornesPeriode();
+  S.bilan.chargement = true; if (S.vue === 'bilan') rendre();
+  try {
+    const [data, livs] = await Promise.all([
+      rpc('stats_periode', { p_debut: debut.toISOString(), p_fin: fin.toISOString() }),
+      req(sb.from('livraisons').select('*, livraison_lignes(*)').gte('created_at', debut.toISOString()).lt('created_at', fin.toISOString()).order('created_at', { ascending: false }).limit(500))
+    ]);
+    S.bilan.data = data; S.bilan.livraisons = livs;
+  } catch (e) { toast('Bilan indisponible : ' + esc(msgErreur(e)), 'erreur-t'); }
+  S.bilan.chargement = false;
+  if (S.vue === 'bilan') rendre();
+}
+function vBilan() {
+  const B = S.bilan, D = B.data, p = bornesPeriode();
+  const types = [['jour', 'Jour'], ['semaine', 'Semaine'], ['mois', 'Mois'], ['annee', 'Année'], ['perso', 'Période']];
+  let h = `<div class="stack" style="gap:10px">
+    <div class="choix" role="group" aria-label="Période">${types.map(([k, v]) => `<button type="button" class="${B.type === k ? 'on' : ''}" aria-pressed="${B.type === k}" data-action="bilan-type" data-t="${k}">${v}</button>`).join('')}</div>
+    ${B.type === 'perso' ? `<div class="row wrap"><div class="champ" style="flex:1 1 140px"><label for="b-du">Du</label><input type="date" id="b-du" value="${B.du}"></div>
+      <div class="champ" style="flex:1 1 140px"><label for="b-au">Au</label><input type="date" id="b-au" value="${B.au}"></div>
+      <button class="btn primaire" style="align-self:flex-end" data-action="bilan-perso">Afficher</button></div>`
+    : `<div class="between"><button class="btn-ic" data-action="bilan-decaler" data-d="-1" aria-label="Période précédente">${ic('gauche', 20)}</button>
+      <span class="bold" style="text-align:center">${esc(p.libelle)}</span>
+      <button class="btn-ic" data-action="bilan-decaler" data-d="1" aria-label="Période suivante" ${B.decalage >= 0 ? 'disabled' : ''}>${ic('droite', 20)}</button></div>`}
+  </div>`;
+  if (B.chargement && !D) return h + `<div class="carte vide-etat"><div class="spin" style="margin:0 auto"></div></div>`;
+  if (!D) return h + `<div class="carte vide-etat">Aucune donnée.</div>`;
+  const pay = D.paiements || {};
+  h += `<div class="kpis" style="${B.chargement ? 'opacity:.5' : ''}">
+    <div class="kpi sombre"><span class="l">Chiffre d'affaires</span><span class="v">${fcfa(D.ca)}</span><span class="s">${num(D.nb_livraisons)} livraison${D.nb_livraisons > 1 ? 's' : ''}</span></div>
+    <div class="kpi"><span class="l">Glace livrée</span><span class="v">${num(D.glace_livree)} sachets</span><span class="s">${num(D.glace_detail)} au détail · ${num(D.glace_lots)} lot${D.glace_lots > 1 ? 's' : ''}</span></div>
+    <div class="kpi"><span class="l">Glace mise en congélation</span><span class="v">${num(D.glace_chargee)} sachets</span><span class="s">${num(D.cycles)} cycle${D.cycles > 1 ? 's' : ''}</span></div>
+    <div class="kpi"><span class="l">Livré au-delà des commandes</span><span class="v">${fcfa(D.supplement_montant)}</span><span class="s" style="color:var(--warn-ink);font-weight:700">${num(D.supplement_unites)} unité${D.supplement_unites > 1 ? 's' : ''} en supplément</span></div>
+    <div class="kpi"><span class="l">Coupures d'électricité</span><span class="v">${num(D.coupures)}</span><span class="s" style="color:var(--warn-ink);font-weight:700">${minutesTxt(D.minutes_coupures)} ajoutées aux cycles</span></div>
+    <div class="kpi"><span class="l">Pertes de glace</span><span class="v">${num(D.pertes_glace)} sachets</span><span class="s">fondus / percés</span></div>
+    <div class="kpi"><span class="l">Ventes à crédit</span><span class="v">${fcfa(D.credit)}</span><span class="s">Espèces ${fcfa(pay.especes)} · Mobile Money ${fcfa(pay.mobile_money)}</span></div>
+  </div>`;
+  const serie = D.ca_series || [];
+  const max = Math.max(1, ...serie.map(x => x.ca));
+  const lib = x => D.granularite === 'mois' ? majuscule(new Intl.DateTimeFormat('fr-FR', { month: 'short', timeZone: 'UTC' }).format(new Date(x.periode + 'T00:00:00Z'))) : String(Number(x.periode.slice(8, 10)));
+  if (serie.length > 1) {
+    const pasEtiq = Math.max(1, Math.ceil(serie.length / 8));
+    h += `<div class="carte pad stack"><div class="between wrap"><h2>Chiffre d'affaires par ${D.granularite}</h2><span class="small muted">Moyenne ${fcfa(D.ca / serie.length)} · max ${fcfa(max)}</span></div>
+      <div class="histo" role="img" aria-label="Histogramme du chiffre d'affaires">${serie.map(x => `<div style="height:${Math.max(x.ca ? 2 : 0, Math.round(x.ca / max * 100))}%" title="${esc(lib(x))} : ${fcfa(x.ca)}"></div>`).join('')}</div>
+      <div class="histo-l">${serie.filter((x, i) => i % pasEtiq === 0).map(x => `<span>${esc(lib(x))}</span>`).join('')}</div></div>`;
+  }
+  const ventes = D.ventes || [], vmax = Math.max(1, ...ventes.map(v => v.montant));
+  h += `<div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+    <div class="carte pad stack"><h2>Ventes par article</h2>${ventes.length ? ventes.map(v => `<div class="stack" style="gap:6px">
+      <div class="between small"><span class="bold">${esc(v.article)}</span><span class="muted">${num(v.quantite)} · ${fcfa(v.montant)}</span></div>
+      <div class="barre" style="height:10px"><div style="width:${Math.round(v.montant / vmax * 100)}%"></div></div></div>`).join('') : '<span class="muted small">Aucune vente.</span>'}</div>
+    <div class="carte pad stack"><h2>Activité par utilisateur</h2>${(D.utilisateurs || []).length ? `<div class="liste">${D.utilisateurs.map(u => `<div class="between small"><span class="bold">${esc(u.nom || '—')}</span><span class="muted">${num(u.livraisons)} livraison${u.livraisons > 1 ? 's' : ''} · <strong style="color:var(--ink)">${fcfa(u.ca)}</strong></span></div>`).join('')}</div>` : '<span class="muted small">Aucune livraison.</span>'}</div>
+  </div>`;
+  h += `<div class="carte pad stack"><h2>Performance des congélateurs</h2><div class="tablo"><table style="min-width:620px"><thead><tr>
+    <th scope="col">Congélateur</th><th scope="col">Capacité</th><th scope="col">Cycles</th><th scope="col">Sachets chargés</th><th scope="col">Remplissage moyen</th><th scope="col">Durée réelle moyenne</th><th scope="col">Ajouté (coupures)</th></tr></thead><tbody>
+    ${(D.congelateurs || []).map(k => `<tr><td class="bold">${esc(k.nom)}</td><td>${k.capacite}</td><td>${k.cycles}</td><td>${num(k.chargees)}</td>
+      <td><div class="row"><div class="barre" style="width:90px"><div style="width:${k.remplissage}%"></div></div><span>${k.remplissage} %</span></div></td>
+      <td class="mono">${k.duree_moyenne ? minutesTxt(k.duree_moyenne) : '—'}</td><td style="color:var(--warn-ink);font-weight:700">${k.minutes_coupures ? minutesTxt(k.minutes_coupures) : '—'}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">Aucun congélateur.</td></tr>'}
+    </tbody></table></div></div>`;
+  const livs = B.livraisons || [];
+  h += `<div class="carte pad stack"><div class="between wrap"><h2>Livraisons de la période (${livs.length})</h2>
+    <button class="btn petit" data-action="bilan-export" ${livs.length ? '' : 'disabled'}>${ic('telecharger', 16)} Exporter (Excel)</button></div>
+    <div class="tablo"><table style="min-width:640px"><thead><tr><th scope="col">Date</th><th scope="col">Client</th><th scope="col">Articles</th><th scope="col">Paiement</th><th scope="col">Livré par</th><th scope="col">Total</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+    ${livs.slice(0, 100).map(v => `<tr class="${v.annulee ? 'annulee' : ''}"><td style="white-space:nowrap">${fDateHeure(v.created_at)}</td><td>${esc(v.client_nom)}</td>
+      <td class="small">${(v.livraison_lignes || []).map(l => `${l.qte_livree} ${esc(nomArticle(l))}`).join(', ')}</td>
+      <td>${PAIEMENTS[v.mode_paiement] || ''}</td><td>${esc(nomProfil(v.livre_par))}</td><td class="bold" style="white-space:nowrap">${fcfa(v.total)}</td>
+      <td>${v.annulee ? `<span class="badge b-gris" title="${esc(v.annulee_motif || '')}">ANNULÉE</span>` : `<button class="btn petit danger" data-action="bilan-annuler" data-id="${v.id}">Annuler</button>`}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">Aucune livraison sur cette période.</td></tr>'}
+    </tbody></table></div>${livs.length > 100 ? '<span class="xs muted">100 premières affichées — l\'export contient tout.</span>' : ''}</div>`;
+  return h;
+}
+function nomArticle(l) {
+  const a = S.articles.find(x => x.id === l.article_id);
+  const n = a ? a.nom : 'article';
+  return l.format === 'lot' ? `lot${l.qte_livree > 1 ? 's' : ''} ${n} (${l.taille_lot})` : n;
+}
+function exporterCSV() {
+  const livs = S.bilan.livraisons || [];
+  const lignes = [['Date', 'Client', 'Téléphone', 'Livré par', 'Paiement', 'Article', 'Format', 'Commandé', 'Livré', 'Prix appliqué', 'Montant', 'Annulée', 'Note']];
+  livs.forEach(v => (v.livraison_lignes || []).forEach(l => {
+    const a = S.articles.find(x => x.id === l.article_id);
+    lignes.push([fDateHeure(v.created_at), v.client_nom, v.client_tel || '', nomProfil(v.livre_par), PAIEMENTS[v.mode_paiement] || '', a ? a.nom : '',
+      l.format === 'lot' ? `Lot de ${l.taille_lot}` : 'Unité', l.qte_commandee, l.qte_livree, l.prix_applique, l.montant, v.annulee ? 'Oui' : 'Non', v.note || '']);
+  }));
+  const csv = '﻿' + lignes.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = `livraisons-${bornesPeriode().debut.toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* ---------------- RÉGLAGES (admin) ---------------- */
+function vReglages() {
+  const g = glace() || {};
+  const R = S.reglages || {};
+  let h = `<form class="carte pad stack" id="f-prix" novalidate style="border:2px solid var(--ice)">
+    <div class="between wrap"><h2>Prix de la glace</h2><span class="xs muted">Les livraisons passées gardent le prix appliqué au moment de la vente.</span></div>
+    <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      <div class="champ"><label for="p-prix">Prix du sachet (détail), FCFA</label><input id="p-prix" name="prix" type="number" inputmode="numeric" min="0" value="${g.prix ?? 0}"></div>
+      <div class="champ"><label for="p-lot">Prix d'un lot, FCFA</label><input id="p-lot" name="prix_lot" type="number" inputmode="numeric" min="0" value="${g.prix_lot ?? 0}"></div>
+      <div class="champ"><label for="p-taille">Sachets par lot</label><input id="p-taille" name="taille_lot" type="number" inputmode="numeric" min="1" value="${g.taille_lot ?? 30}"></div>
+      <div class="champ"><label for="p-seuil">Seuil d'alerte (sachets)</label><input id="p-seuil" name="seuil_alerte" type="number" inputmode="numeric" min="0" value="${g.seuil_alerte ?? 0}"></div>
+    </div>
+    <button class="btn primaire" type="submit" style="align-self:flex-start">Enregistrer les prix</button></form>`;
+
+  h += `<div class="carte pad stack"><div class="between"><h2>Congélateurs</h2><button class="btn petit primaire" data-action="reg-congel">${ic('plus', 16)} Ajouter</button></div>
+    <div class="tablo"><table style="min-width:560px"><thead><tr><th scope="col">Nom</th><th scope="col">Capacité</th><th scope="col">Durée de base</th><th scope="col">+ par coupure</th><th scope="col">Statut</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+    ${S.congelateurs.map(k => `<tr><td class="bold">${esc(k.nom)}</td><td>${k.capacite} sachets</td><td class="mono">${minutesTxt(k.duree_minutes)}</td><td class="mono">+${minutesTxt(k.minutes_coupure)}</td>
+      <td>${k.actif ? '<span class="badge b-okt">ACTIF</span>' : '<span class="badge b-gris">INACTIF</span>'}</td>
+      <td style="text-align:right"><button class="btn petit" data-action="reg-congel" data-id="${k.id}">Modifier</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted">Aucun congélateur. Ajoutez le premier.</td></tr>'}
+    </tbody></table></div></div>`;
+
+  const autres = S.articles.filter(a => !a.est_glace);
+  h += `<div class="carte pad stack"><div class="between"><h2>Autres articles (eau, jus, bissap…)</h2><button class="btn petit primaire" data-action="reg-article">${ic('plus', 16)} Ajouter</button></div>
+    <div class="tablo"><table style="min-width:560px"><thead><tr><th scope="col">Article</th><th scope="col">Unité</th><th scope="col">Prix</th><th scope="col">Vente par lot</th><th scope="col">Seuil</th><th scope="col">Statut</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+    ${autres.map(a => `<tr><td class="bold">${esc(a.nom)}</td><td>${esc(a.unite)}</td><td>${fcfa(a.prix)}</td><td>${lotPossible(a) ? `${a.taille_lot} pour ${fcfa(a.prix_lot)}` : '—'}</td><td>${a.seuil_alerte}</td>
+      <td>${a.actif ? '<span class="badge b-okt">ACTIF</span>' : '<span class="badge b-gris">INACTIF</span>'}</td>
+      <td style="text-align:right"><button class="btn petit" data-action="reg-article" data-id="${a.id}">Modifier</button></td></tr>`).join('') || '<tr><td colspan="7" class="muted">Aucun article.</td></tr>'}
+    </tbody></table></div></div>`;
+
+  h += `<div class="carte pad stack"><div class="between"><h2>Utilisateurs</h2><button class="btn petit primaire" data-action="reg-user-new">${ic('plus', 16)} Créer un compte</button></div>
+    <div class="liste">${S.profils.map(p => `<div class="between"><div class="row"><span class="puce-ic" style="width:36px;height:36px;border-radius:18px;background:var(--ice-t);color:var(--ice);font-weight:700;font-size:13px">${esc((p.nom || '?').slice(0, 2).toUpperCase())}</span>
+      <div><div class="bold">${esc(p.nom)}${p.id === S.profil.id ? ' <span class="xs muted">(vous)</span>' : ''}</div><div class="xs muted">Identifiant : ${esc(p.identifiant || '—')} · ${p.role === 'admin' ? 'Administrateur' : 'Opérateur'}</div></div></div>
+      <div class="row">${p.actif ? '<span class="badge b-okt">ACTIF</span>' : '<span class="badge b-warn">EN ATTENTE</span>'}<button class="btn petit" data-action="reg-user" data-id="${p.id}">Modifier</button></div></div>`).join('')}</div></div>`;
+
+  h += `<form class="carte pad stack" id="f-alertes" novalidate><h2>Alertes et Telegram</h2>
+    <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      <div class="champ"><label for="a-rappel">Rappel si glaces prêtes non retirées (min)</label><input id="a-rappel" name="rappel_minutes" type="number" min="5" max="240" value="${R.rappel_minutes ?? 15}"></div>
+      <div class="champ"><label for="a-vide">Alerte congélateur vide après (min)</label><input id="a-vide" name="vide_minutes" type="number" min="5" max="1440" value="${R.vide_minutes ?? 30}"></div>
+      <div class="champ"><label for="a-recap">Heure du récapitulatif quotidien</label><select id="a-recap" name="heure_recap">${Array.from({ length: 24 }, (_, i) => `<option value="${i}" ${i === (R.heure_recap ?? 20) ? 'selected' : ''}>${String(i).padStart(2, '0')} h 00</option>`).join('')}</select></div>
+    </div>
+    <label class="check"><input type="checkbox" name="telegram_actif" ${R.telegram_actif ? 'checked' : ''}> Envoyer les alertes sur Telegram</label>
+    <div class="champ"><label for="a-chat">Identifiant du groupe Telegram</label><input id="a-chat" name="telegram_chat_id" value="${esc(R.telegram_chat_id || '')}" placeholder="ex. -1001234567890">
+      <span class="aide">Le jeton du bot se configure une seule fois dans Supabase (voir le guide).</span></div>
+    <div class="row wrap"><button class="btn primaire" type="submit">Enregistrer</button><button class="btn" type="button" data-action="reg-telegram-test">Envoyer un message de test</button></div>
+    <p class="xs muted" style="margin:0">WhatsApp : non inclus dans cette version (service payant à l'envoi). Possible en option plus tard.</p></form>`;
+  h += `<p class="xs muted" style="text-align:center;margin:0">Gestion Glace v${APP_VERSION}</p>`;
+  return h;
+}
+
+/* ---------------- ACTIONS ---------------- */
+const champ = (id, label, attrs = '', aide = '') => `<div class="champ"><label for="${id}">${label}</label><input id="${id}" ${attrs}>${aide ? `<span class="aide">${aide}</span>` : ''}</div>`;
+const entier = (v, nom, min = 0) => { const n = parseInt(v, 10); if (isNaN(n) || n < min) throw new Error(`${nom} : valeur invalide.`); return n; };
+
+const ACTIONS = {
+  async deconnexion() { arreterTempsReel(); await sb.auth.signOut(); },
+
+  coupure() {
+    const n = S.cycles.filter(c => c.statut === 'congelation').length;
+    ouvrirModal({
+      titre: 'Signaler une coupure', bouton: 'Signaler', classe: 'attention',
+      corps: `<p class="small" style="margin:0">${n ? `${n} cycle${n > 1 ? 's' : ''} en congélation ser${n > 1 ? 'ont' : 'a'} prolongé${n > 1 ? 's' : ''} du temps fixé pour chaque congélateur.` : 'Aucun cycle en congélation actuellement : la coupure sera seulement enregistrée.'} Tout le monde sera prévenu.</p>
+        <div class="champ"><label for="cp-note">Note (facultatif)</label><input id="cp-note" name="note" placeholder="ex. coupure quartier, durée estimée…"></div>`,
+      onValider: async d => { const r = await rpc('signaler_coupure', { p_note: d.note || null }); toast(`Coupure enregistrée : ${r} cycle(s) prolongé(s).`, 'attention'); rafraichir(true); }
+    });
+  },
+
+  retirer(b) {
+    const c = S.cycles.find(x => x.id === Number(b.dataset.id));
+    if (!c) return;
+    const k = S.congelateurs.find(x => x.id === c.congelateur_id) || {};
+    ouvrirModal({
+      titre: `Retirer — ${esc(k.nom)}`, bouton: 'Confirmer le retrait', classe: 'succes',
+      corps: `<p class="small muted" style="margin:0">${reste(c)} sachet(s) dans ce cycle. Les sachets retirés passent dans le stock « prêts à livrer ».</p>
+        <div class="grid2">${champ('rt-q', 'Sachets retirés', `name="quantite" type="number" inputmode="numeric" min="0" max="${reste(c)}" value="${reste(c)}"`)}
+        ${champ('rt-p', 'Dont perdus / percés', 'name="pertes" type="number" inputmode="numeric" min="0" value="0"', 'Non comptés dans le stock')}</div>`,
+      onValider: async d => {
+        const q = entier(d.quantite, 'Sachets retirés'), p = entier(d.pertes || 0, 'Pertes');
+        await rpc('retirer', { p_cycle: c.id, p_quantite: q, p_pertes: p });
+        toast(`${q} sachet(s) retiré(s). Pensez à recharger ${esc(k.nom)}.`, 'succes'); rafraichir();
+        if (S.vue === 'congelateur') chargerHistorique(k.id);
+      }
+    });
+  },
+
+  prolonger(b) {
+    const c = S.cycles.find(x => x.id === Number(b.dataset.id));
+    if (!c) return;
+    ouvrirModal({
+      titre: 'Prolonger la congélation', bouton: 'Prolonger',
+      corps: `<p class="small muted" style="margin:0">À utiliser si la glace n'est pas encore assez dure.</p>
+        <div class="champ"><label for="pr-m">Ajouter</label><select id="pr-m" name="minutes">${[15, 30, 45, 60, 90, 120].map(m => `<option value="${m}" ${m === 30 ? 'selected' : ''}>${minutesTxt(m)}</option>`).join('')}</select></div>`,
+      onValider: async d => { const fin = await rpc('prolonger', { p_cycle: c.id, p_minutes: Number(d.minutes) }); toast(`Nouvelle fin prévue à ${fHeure(fin)}.`); rafraichir(); }
+    });
+  },
+
+  qte(b) {
+    const inp = $('#ch-qte'); if (!inp) return;
+    const max = Number(inp.max), v = parseInt(inp.value, 10) || 0;
+    inp.value = b.dataset.pas === 'max' ? max : Math.max(1, Math.min(max, v + Number(b.dataset.pas)));
+  },
+
+  'liv-ajout'() {
+    const g = glace(), dejaGlace = S.liv.lignes.some(l => g && Number(l.article_id) === g.id);
+    const autre = S.articles.find(a => a.actif && !a.est_glace && !S.liv.lignes.some(l => Number(l.article_id) === a.id));
+    const art = autre || (g && !dejaGlace ? g : null) || g || S.articles.find(a => a.actif);
+    if (!art) return toast('Aucun article actif.', 'erreur-t');
+    S.liv.lignes.push({ k: ++cleLigne, article_id: art.id, format: 'unite', commandee: '', livree: '' });
+    rendre();
+  },
+  'liv-suppr'(b) { S.liv.lignes.splice(Number(b.dataset.i), 1); rendre(); },
+  'liv-format'(b) { S.liv.lignes[Number(b.dataset.i)].format = b.dataset.f; rendre(); },
+  'liv-paiement'(b) { S.liv.paiement = b.dataset.p; rendre(); },
+
+  'stock-appro'(b) { mouvementStock(Number(b.dataset.id), 'appro'); },
+  'stock-perte'(b) { mouvementStock(Number(b.dataset.id), 'perte'); },
+  'stock-ajuster'(b) { mouvementStock(Number(b.dataset.id), 'ajustement'); },
+
+  async 'notif-lu'() { try { await rpc('marquer_lu', { p_ids: null }); rafraichir(); } catch (e) { toast(esc(msgErreur(e)), 'erreur-t'); } },
+  async 'notif-autoriser'() {
+    const r = await Notification.requestPermission();
+    toast(r === 'granted' ? 'Notifications activées sur cet appareil.' : 'Notifications refusées par le navigateur.', r === 'granted' ? 'succes' : 'attention');
+    rendre();
+  },
+
+  'bilan-type'(b) { S.bilan.type = b.dataset.t; S.bilan.decalage = 0; if (b.dataset.t !== 'perso') chargerBilan(); else rendre(); },
+  'bilan-decaler'(b) { S.bilan.decalage = Math.min(0, S.bilan.decalage + Number(b.dataset.d)); chargerBilan(); },
+  'bilan-perso'() {
+    const du = $('#b-du').value, au = $('#b-au').value;
+    if (!du || !au || au < du) return toast('Choisissez une date de début et une date de fin valides.', 'erreur-t');
+    S.bilan.du = du; S.bilan.au = au; chargerBilan();
+  },
+  'bilan-export'() { exporterCSV(); },
+  'bilan-annuler'(b) {
+    const v = S.bilan.livraisons.find(x => x.id === Number(b.dataset.id));
+    if (!v) return;
+    ouvrirModal({
+      titre: 'Annuler la livraison', bouton: 'Annuler la livraison', classe: 'attention',
+      corps: `<p class="small" style="margin:0">${esc(v.client_nom)} — ${fcfa(v.total)} le ${fDateHeure(v.created_at)}. Les quantités seront remises en stock et la vente sortira des statistiques.</p>
+        <div class="champ"><label for="an-m">Motif</label><input id="an-m" name="motif" required placeholder="ex. erreur de saisie"></div>`,
+      onValider: async d => {
+        if (!d.motif.trim()) throw new Error('Indiquez le motif.');
+        await rpc('annuler_livraison', { p_livraison: v.id, p_motif: d.motif });
+        toast('Livraison annulée.'); chargerBilan(); rafraichir();
+      }
+    });
+  },
+
+  'reg-congel'(b) {
+    const k = S.congelateurs.find(x => x.id === Number(b.dataset.id)) || { nom: '', capacite: 30, duree_minutes: 180, minutes_coupure: 30, actif: true };
+    const nouveau = !k.id;
+    ouvrirModal({
+      titre: nouveau ? 'Ajouter un congélateur' : `Modifier — ${esc(k.nom)}`, bouton: 'Enregistrer',
+      corps: `${champ('kg-nom', 'Nom', `name="nom" required value="${esc(k.nom || `Congélateur ${S.congelateurs.length + 1}`)}"`)}
+        <div class="grid2">${champ('kg-cap', 'Capacité (sachets)', `name="capacite" type="number" inputmode="numeric" min="1" value="${k.capacite}"`)}
+        ${champ('kg-dur', 'Durée de base (min)', `name="duree_minutes" type="number" inputmode="numeric" min="10" value="${k.duree_minutes}"`, '180 min = 3 h')}</div>
+        ${champ('kg-cp', 'Temps ajouté à chaque coupure (min)', `name="minutes_coupure" type="number" inputmode="numeric" min="0" value="${k.minutes_coupure}"`)}
+        <label class="check"><input type="checkbox" name="actif" ${k.actif ? 'checked' : ''}> Congélateur actif</label>`,
+      onValider: async d => {
+        const v = { nom: d.nom.trim(), capacite: entier(d.capacite, 'Capacité', 1), duree_minutes: entier(d.duree_minutes, 'Durée', 1), minutes_coupure: entier(d.minutes_coupure, 'Temps par coupure', 0), actif: d.actif };
+        if (!v.nom) throw new Error('Indiquez un nom.');
+        if (!nouveau && v.capacite < occupation(k.id)) throw new Error(`Il y a actuellement ${occupation(k.id)} sachets dans ce congélateur.`);
+        await req(nouveau ? sb.from('congelateurs').insert(v) : sb.from('congelateurs').update(v).eq('id', k.id));
+        toast('Congélateur enregistré.', 'succes'); rafraichir(true);
+      }
+    });
+  },
+
+  'reg-article'(b) {
+    const a = S.articles.find(x => x.id === Number(b.dataset.id)) || { nom: '', unite: 'unité', prix: 0, prix_lot: null, taille_lot: null, seuil_alerte: 0, actif: true, ordre: 100 };
+    const nouveau = !a.id;
+    ouvrirModal({
+      titre: nouveau ? 'Ajouter un article' : `Modifier — ${esc(a.nom)}`, bouton: 'Enregistrer',
+      corps: `${champ('ar-nom', 'Nom', `name="nom" required value="${esc(a.nom)}" placeholder="ex. Pack eau 1,5 L"`)}
+        <div class="grid2">${champ('ar-u', 'Unité', `name="unite" value="${esc(a.unite)}" placeholder="pack, bouteille…"`)}
+        ${champ('ar-p', 'Prix unitaire (FCFA)', `name="prix" type="number" inputmode="numeric" min="0" value="${a.prix}"`)}</div>
+        ${champ('ar-s', 'Seuil d\'alerte', `name="seuil_alerte" type="number" inputmode="numeric" min="0" value="${a.seuil_alerte}"`, '0 = pas d\'alerte')}
+        <label class="check"><input type="checkbox" name="lot" ${lotPossible(a) ? 'checked' : ''}> Vendu aussi par lot</label>
+        <div class="grid2">${champ('ar-tl', 'Unités par lot', `name="taille_lot" type="number" inputmode="numeric" min="2" value="${a.taille_lot || ''}"`)}
+        ${champ('ar-pl', 'Prix du lot (FCFA)', `name="prix_lot" type="number" inputmode="numeric" min="0" value="${a.prix_lot ?? ''}"`)}</div>
+        <label class="check"><input type="checkbox" name="actif" ${a.actif ? 'checked' : ''}> Article actif</label>`,
+      onValider: async d => {
+        const v = { nom: d.nom.trim(), unite: (d.unite || 'unité').trim(), prix: entier(d.prix, 'Prix'), seuil_alerte: entier(d.seuil_alerte || 0, 'Seuil'), actif: d.actif,
+          taille_lot: d.lot ? entier(d.taille_lot, 'Unités par lot', 2) : null, prix_lot: d.lot ? entier(d.prix_lot, 'Prix du lot') : null };
+        if (!v.nom) throw new Error('Indiquez un nom.');
+        await req(nouveau ? sb.from('articles').insert(v) : sb.from('articles').update(v).eq('id', a.id));
+        toast('Article enregistré.', 'succes'); rafraichir(true);
+      }
+    });
+  },
+
+  'reg-user'(b) {
+    const p = S.profils.find(x => x.id === b.dataset.id);
+    if (!p) return;
+    ouvrirModal({
+      titre: `Modifier — ${esc(p.nom)}`, bouton: 'Enregistrer',
+      corps: `${champ('us-nom', 'Nom', `name="nom" value="${esc(p.nom)}"`)}
+        <div class="champ"><label for="us-role">Rôle</label><select id="us-role" name="role"><option value="operateur" ${p.role === 'operateur' ? 'selected' : ''}>Opérateur</option><option value="admin" ${p.role === 'admin' ? 'selected' : ''}>Administrateur</option></select></div>
+        <label class="check"><input type="checkbox" name="actif" ${p.actif ? 'checked' : ''}> Compte actif (peut utiliser l'application)</label>
+        <p class="xs muted" style="margin:0">Mot de passe oublié : réinitialisez-le dans Supabase › Authentication › Users.</p>`,
+      onValider: async d => { await rpc('modifier_utilisateur', { p_id: p.id, p_nom: d.nom, p_role: d.role, p_actif: d.actif }); toast('Utilisateur mis à jour.', 'succes'); rafraichir(true); }
+    });
+  },
+
+  'reg-user-new'() {
+    ouvrirModal({
+      titre: 'Créer un compte', bouton: 'Créer le compte',
+      corps: `${champ('nu-nom', 'Nom affiché', 'name="nom" required placeholder="ex. Awa"')}
+        ${champ('nu-id', 'Identifiant de connexion', 'name="identifiant" required autocapitalize="none" placeholder="ex. awa"', 'Lettres et chiffres, sans espace')}
+        ${champ('nu-mdp', 'Mot de passe provisoire', 'name="mdp" type="text" required minlength="6"', '6 caractères minimum — à communiquer à la personne')}
+        <div class="champ"><label for="nu-role">Rôle</label><select id="nu-role" name="role"><option value="operateur">Opérateur</option><option value="admin">Administrateur</option></select></div>`,
+      onValider: async d => {
+        const ident = (d.identifiant || '').trim().toLowerCase();
+        if (!d.nom.trim()) throw new Error('Indiquez le nom.');
+        if (!/^[a-z0-9._-]{2,}$/.test(ident) && !ident.includes('@')) throw new Error('Identifiant invalide (lettres, chiffres, point, tiret).');
+        if ((d.mdp || '').length < 6) throw new Error('Mot de passe : 6 caractères minimum.');
+        const tmp = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false, storageKey: 'glace-creation' } });
+        const { data, error } = await tmp.auth.signUp({ email: versEmail(ident), password: d.mdp, options: { data: { nom: d.nom.trim() } } });
+        if (error) throw new Error(error.message.includes('already') ? 'Cet identifiant existe déjà.' : error.message);
+        if (!data.user || !data.user.id) throw new Error('Création impossible.');
+        await rpc('modifier_utilisateur', { p_id: data.user.id, p_nom: d.nom.trim(), p_role: d.role, p_actif: true });
+        tmp.auth.signOut().catch(() => {});
+        toast(`Compte créé. Identifiant : ${esc(ident)}`, 'succes'); rafraichir(true);
+      }
+    });
+  },
+
+  async 'reg-telegram-test'() {
+    try { toast(esc(await rpc('tester_telegram'))); } catch (e) { toast(esc(msgErreur(e)), 'erreur-t'); }
+  }
+};
+
+function mouvementStock(id, motif) {
+  const a = S.articles.find(x => x.id === id);
+  if (!a) return;
+  const st = (S.stocks[id] || {}).stock || 0;
+  const titres = { appro: 'Approvisionner', perte: 'Déclarer une perte', ajustement: 'Inventaire' };
+  const libelles = { appro: `Quantité reçue (${esc(a.unite)})`, perte: `Quantité perdue (${esc(a.unite)})`, ajustement: `Stock réellement compté (${esc(a.unite)})` };
+  ouvrirModal({
+    titre: `${titres[motif]} — ${esc(a.nom)}`, bouton: 'Enregistrer', classe: motif === 'perte' ? 'attention' : 'primaire',
+    corps: `<p class="small muted" style="margin:0">Stock actuel : <strong>${num(st)}</strong>${a.est_glace ? ' sachets prêts' : ''}.</p>
+      ${champ('mv-q', libelles[motif], `name="quantite" type="number" inputmode="numeric" min="0" required value="${motif === 'ajustement' ? st : ''}"`)}
+      ${champ('mv-n', 'Note', `name="note" placeholder="${motif === 'appro' ? 'Fournisseur, n° de bon…' : 'Motif'}"`)}`,
+    onValider: async d => {
+      const q = entier(d.quantite, 'Quantité', motif === 'ajustement' ? 0 : 1);
+      const r = await rpc('mouvement_stock', { p_article: id, p_motif: motif, p_quantite: q, p_note: d.note || null });
+      toast(`Stock de ${esc(a.nom)} : ${num(r)}.`, 'succes'); rafraichir();
+    }
+  });
+}
+
+/* ---------------- évènements ---------------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-action]');
+  if (!b || b.disabled) return;
+  const f = ACTIONS[b.dataset.action];
+  if (f) { e.preventDefault(); f(b, e); }
+});
+
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.liv && S.liv) {
+    S.liv[t.dataset.liv] = t.value;
+    if (t.dataset.liv === 'client') {
+      const c = S.clients.find(x => x.client_nom.toLowerCase() === t.value.trim().toLowerCase());
+      if (c && c.client_tel && !S.liv.tel) { S.liv.tel = c.client_tel; const tel = $('#lv-tel'); if (tel) tel.value = c.client_tel; }
+    }
+  }
+  if (t.dataset.ligne && S.liv) { S.liv.lignes[Number(t.dataset.i)][t.dataset.ligne] = t.value; majTotauxLivraison(); }
+  if (t.id === 'ch-duree') { const p = $('#ch-pret'); const m = parseInt(t.value, 10); if (p && m > 0) p.textContent = fHeure(Date.now() + m * 60000); }
+});
+
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.actionChange === 'liv-article') {
+    const l = S.liv.lignes[Number(t.dataset.i)];
+    l.article_id = Number(t.value);
+    if (!lotPossible(S.articles.find(a => a.id === l.article_id))) l.format = 'unite';
+    rendre();
+  }
+  if (t.id === 'ch-congel') aller('charger/' + t.value);
+});
+
+document.addEventListener('submit', async e => {
+  const f = e.target;
+  if (!['f-charger', 'f-livrer', 'f-prix', 'f-alertes'].includes(f.id)) return;
+  e.preventDefault();
+  const btn = f.querySelector('button[type=submit]');
+  if (btn) btn.disabled = true;
+  try {
+    if (f.id === 'f-charger') {
+      const d = Object.fromEntries(new FormData(f).entries());
+      const q = entier(d.quantite, 'Nombre de sachets', 1), dur = entier(d.duree, 'Durée', 1);
+      await rpc('charger', { p_congelateur: Number(d.congelateur), p_quantite: q, p_duree: dur });
+      const k = S.congelateurs.find(x => x.id === Number(d.congelateur));
+      toast(`${q} sachets en congélation dans ${esc(k ? k.nom : '')}. Prêts vers ${fHeure(Date.now() + dur * 60000)}.`, 'succes');
+      await rechargerTout(); aller('accueil');
+    }
+    if (f.id === 'f-livrer') {
+      const L = S.liv;
+      if (!L.client.trim()) throw new Error('Indiquez le nom du client.');
+      const lignes = L.lignes.filter(l => parseInt(l.livree, 10) > 0).map(l => ({
+        article_id: Number(l.article_id), format: l.format,
+        commandee: l.commandee === '' ? null : Math.max(0, parseInt(l.commandee, 10) || 0), livree: parseInt(l.livree, 10)
+      }));
+      if (!lignes.length) throw new Error('Indiquez au moins une quantité livrée.');
+      const t = totauxLivraison();
+      await rpc('enregistrer_livraison', { p_client: L.client, p_tel: L.tel || null, p_paiement: L.paiement, p_note: L.note || null, p_lignes: lignes });
+      toast(`Livraison enregistrée : ${fcfa(t.total)}.`, 'succes');
+      nouvelleLivraison(); await rechargerTout(); aller('accueil');
+    }
+    if (f.id === 'f-prix') {
+      const d = Object.fromEntries(new FormData(f).entries());
+      const g = glace();
+      await req(sb.from('articles').update({ prix: entier(d.prix, 'Prix du sachet'), prix_lot: entier(d.prix_lot, 'Prix du lot'), taille_lot: entier(d.taille_lot, 'Sachets par lot', 1), seuil_alerte: entier(d.seuil_alerte, 'Seuil') }).eq('id', g.id));
+      toast('Prix de la glace enregistrés.', 'succes'); rafraichir(true);
+    }
+    if (f.id === 'f-alertes') {
+      const d = Object.fromEntries(new FormData(f).entries());
+      await req(sb.from('reglages').update({
+        rappel_minutes: entier(d.rappel_minutes, 'Rappel', 5), vide_minutes: entier(d.vide_minutes, 'Congélateur vide', 5),
+        heure_recap: Number(d.heure_recap), telegram_actif: f.querySelector('[name=telegram_actif]').checked,
+        telegram_chat_id: (d.telegram_chat_id || '').trim() || null, updated_at: new Date().toISOString()
+      }).eq('id', 1));
+      toast('Réglages des alertes enregistrés.', 'succes'); rafraichir(true);
+    }
+  } catch (err) {
+    toast(esc(msgErreur(err)), 'erreur-t');
+  } finally { if (btn) btn.disabled = false; }
+});
+
+/* ---------------- application installable ---------------- */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+init();
+</script>
+</body>
+</html>
